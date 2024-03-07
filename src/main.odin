@@ -10,8 +10,9 @@ TANK_SIZE :: 64
 TERRAIN_HEIGHT :: 200
 
 Bullet :: struct {
-	rect:  rl.Rectangle,
-	speed: f32,
+	rect:   rl.Rectangle,
+	damage: f32,
+	speed:  f32,
 }
 
 Tank :: struct {
@@ -20,18 +21,21 @@ Tank :: struct {
 	colour:  rl.Color,
 	bullets: [dynamic]Bullet,
 	is_dead: bool,
+	health:  f32,
 }
 
 player: Tank
 enemy: Tank
 
 init :: proc() {
+	player.health = 100
 	player.rect.x = 340
 	player.rect.y = SCREEN_HEIGHT - TERRAIN_HEIGHT
 	player.speed = 400
 	player.colour = rl.DARKBLUE
 	player.bullets = make([dynamic]Bullet, 0, 1)
 
+	enemy.health = 100
 	enemy.rect.x = 1000
 	enemy.rect.y = SCREEN_HEIGHT - TERRAIN_HEIGHT
 	enemy.speed = 400
@@ -51,9 +55,13 @@ update :: proc() {
 	if len(player.bullets) != 0 {
 		player.bullets[0].rect.x += player.bullets[0].speed * rl.GetFrameTime()
 
+		// TODO make this hit detection better
 		if player.bullets[0].rect.x >= enemy.rect.x {
-			fmt.println("hit")
-			enemy.is_dead = true
+			enemy.health -= player.bullets[0].damage
+
+			if enemy.health <= 0 {
+				enemy.is_dead = true
+			}
 			pop(&player.bullets)
 		}
 	}
@@ -65,7 +73,7 @@ update :: proc() {
 			10,
 			10,
 		}
-		bullet := Bullet{bullet_rect, 200}
+		bullet := Bullet{bullet_rect, 25, 300}
 		append(&player.bullets, bullet)
 	}
 }
@@ -83,9 +91,21 @@ render :: proc() {
 
 	// player and enemy rendering
 	if !(player.is_dead) {
+		rl.DrawRectangleV({player.rect.x, player.rect.y - 20}, {TANK_SIZE, 10}, rl.RED)
+		rl.DrawRectangleV(
+			{player.rect.x, player.rect.y - 20},
+			{TANK_SIZE * (player.health / 100), 10},
+			rl.GREEN,
+		)
 		rl.DrawRectangleV({player.rect.x, player.rect.y}, {TANK_SIZE, TANK_SIZE}, player.colour)
 	}
 	if !(enemy.is_dead) {
+		rl.DrawRectangleV({enemy.rect.x, enemy.rect.y - 20}, {TANK_SIZE, 10}, rl.RED)
+		rl.DrawRectangleV(
+			{enemy.rect.x, enemy.rect.y - 20},
+			{TANK_SIZE * (enemy.health / 100), 10},
+			rl.GREEN,
+		)
 		rl.DrawRectangleV({enemy.rect.x, enemy.rect.y}, {TANK_SIZE, TANK_SIZE}, enemy.colour)
 	}
 
