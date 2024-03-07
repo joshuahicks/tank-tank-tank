@@ -33,7 +33,7 @@ init :: proc() {
 	player.rect.y = SCREEN_HEIGHT - TERRAIN_HEIGHT
 	player.speed = 400
 	player.colour = rl.DARKBLUE
-	player.bullets = make([dynamic]Bullet, 0, 1)
+	player.bullets = make([dynamic]Bullet)
 
 	enemy.health = 100
 	enemy.rect.x = 1000
@@ -52,17 +52,23 @@ update :: proc() {
 	}
 
 	// bullet movement
+	fmt.println(len(player.bullets))
 	if len(player.bullets) != 0 {
-		player.bullets[0].rect.x += player.bullets[0].speed * rl.GetFrameTime()
+		for &bullet, index in player.bullets {
+			bullet.rect.x += bullet.speed * rl.GetFrameTime()
 
-		// TODO make this hit detection better
-		if player.bullets[0].rect.x >= enemy.rect.x {
-			enemy.health -= player.bullets[0].damage
+			if bullet.rect.x >= enemy.rect.x && !enemy.is_dead {
+				enemy.health -= bullet.damage
 
-			if enemy.health <= 0 {
-				enemy.is_dead = true
+				if enemy.health <= 0 {
+					enemy.is_dead = true
+				}
+				ordered_remove(&player.bullets, index)
 			}
-			pop(&player.bullets)
+
+			if bullet.rect.x > SCREEN_WIDTH {
+				ordered_remove(&player.bullets, index)
+			}
 		}
 	}
 
@@ -85,8 +91,8 @@ render :: proc() {
 	rl.ClearBackground(rl.SKYBLUE)
 	rl.DrawRectangleV({0, 520 + TANK_SIZE}, {SCREEN_WIDTH, TERRAIN_HEIGHT}, rl.DARKGREEN)
 
-	if len(player.bullets) != 0 {
-		rl.DrawCircleV({player.bullets[0].rect.x, player.bullets[0].rect.y}, 10, rl.BLACK)
+	for bullet in player.bullets {
+		rl.DrawCircleV({bullet.rect.x, bullet.rect.y}, 10, rl.BLACK)
 	}
 
 	// player and enemy rendering
