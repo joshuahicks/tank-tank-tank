@@ -52,7 +52,6 @@ update :: proc() {
 	}
 
 	// bullet movement
-	fmt.println(len(player.bullets))
 	if len(player.bullets) != 0 {
 		for &bullet, index in player.bullets {
 			bullet.rect.x += bullet.speed * rl.GetFrameTime()
