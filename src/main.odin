@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 
 SCREEN_WIDTH :: 1280
@@ -10,18 +11,25 @@ TANK_SIZE :: 64
 TERRAIN_HEIGHT :: 200
 
 Bullet :: struct {
-	rect:   rl.Rectangle,
-	damage: f32,
-	speed:  f32,
+	position:  rl.Vector2,
+	speed:     rl.Vector2,
+	damage:    f32,
+	is_active: bool,
 }
 
 Tank :: struct {
-	rect:    rl.Rectangle,
-	speed:   f32,
-	colour:  rl.Color,
-	bullets: [dynamic]Bullet,
-	is_dead: bool,
-	health:  f32,
+	position:   rl.Vector2,
+	speed:      f32,
+	colour:     rl.Color,
+	bullets:    [dynamic]Bullet,
+	is_dead:    bool,
+	health:     f32,
+	aim_point:  rl.Vector2,
+	aim_angle:  f32,
+	aim_power:  f32,
+	prev_point: rl.Vector2,
+	prev_angle: f32,
+	prev_power: f32,
 }
 
 player: Tank
@@ -29,15 +37,13 @@ enemy: Tank
 
 init :: proc() {
 	player.health = 100
-	player.rect.x = 340
-	player.rect.y = SCREEN_HEIGHT - TERRAIN_HEIGHT
+	player.position = {340, SCREEN_HEIGHT - TERRAIN_HEIGHT}
 	player.speed = 400
 	player.colour = rl.DARKBLUE
 	player.bullets = make([dynamic]Bullet)
 
 	enemy.health = 100
-	enemy.rect.x = 1000
-	enemy.rect.y = SCREEN_HEIGHT - TERRAIN_HEIGHT
+	enemy.position = {1000, SCREEN_HEIGHT - TERRAIN_HEIGHT}
 	enemy.speed = 400
 	enemy.colour = rl.MAROON
 }
@@ -45,41 +51,47 @@ init :: proc() {
 update :: proc() {
 	// player movement
 	if rl.IsKeyDown(.J) {
-		player.rect.x -= player.speed * rl.GetFrameTime()
+		player.position.x -= player.speed * rl.GetFrameTime()
 	}
 	if rl.IsKeyDown(.L) {
-		player.rect.x += player.speed * rl.GetFrameTime()
+		player.position.x += player.speed * rl.GetFrameTime()
+	}
+
+	{ 	// player aiming
+		player.aim_power = math.sqrt(
+			math.pow(player.position.x - rl.GetMousePosition().x, 2) +
+			math.pow(player.position.y - rl.GetMousePosition().y, 2),
+		)
+		player.aim_angle = math.to_degrees_f32(
+			math.asin((player.position.y - rl.GetMousePosition().y) / player.aim_power),
+		)
+		player.aim_point = rl.GetMousePosition()
+	}
+
+	if rl.IsMouseButtonPressed(.LEFT) {
+		player.prev_point = player.aim_point
+		player.prev_power = player.aim_power
+		player.prev_angle = player.aim_angle
+
+		bullet := Bullet{player.position, {1, 1}, 25, false}
+		bullet.position = player.position
+		append(&player.bullets, bullet)
 	}
 
 	// bullet movement
 	if len(player.bullets) != 0 {
 		for &bullet, index in player.bullets {
-			bullet.rect.x += bullet.speed * rl.GetFrameTime()
-
-			if bullet.rect.x >= enemy.rect.x && !enemy.is_dead {
-				enemy.health -= bullet.damage
-
-				if enemy.health <= 0 {
-					enemy.is_dead = true
-				}
-				ordered_remove(&player.bullets, index)
+			if !bullet.is_active {
+				bullet.speed.x =
+					math.cos(math.to_radians_f32(player.prev_angle)) * player.prev_power * 3 / 60
+				bullet.speed.y =
+					-math.sin(math.to_radians_f32(player.prev_angle)) * player.prev_power * 3 / 60
+				bullet.is_active = true
 			}
-
-			if bullet.rect.x > SCREEN_WIDTH {
-				ordered_remove(&player.bullets, index)
-			}
+			bullet.position.x += bullet.speed.x
+			bullet.position.y += bullet.speed.y
+			bullet.speed.y += 9.81 / 60
 		}
-	}
-
-	if rl.IsMouseButtonPressed(.LEFT) {
-		bullet_rect := rl.Rectangle {
-			player.rect.x + TANK_SIZE,
-			SCREEN_HEIGHT - (TERRAIN_HEIGHT),
-			10,
-			10,
-		}
-		bullet := Bullet{bullet_rect, 25, 300}
-		append(&player.bullets, bullet)
 	}
 }
 
@@ -91,35 +103,51 @@ render :: proc() {
 	rl.DrawRectangleV({0, 520 + TANK_SIZE}, {SCREEN_WIDTH, TERRAIN_HEIGHT}, rl.DARKGREEN)
 
 	for bullet in player.bullets {
-		rl.DrawCircleV({bullet.rect.x, bullet.rect.y}, 10, rl.BLACK)
+		rl.DrawCircleV({bullet.position.x, bullet.position.y}, 10, rl.BLACK)
 	}
 
 	// player and enemy rendering
 	if !(player.is_dead) {
-		rl.DrawRectangleV({player.rect.x, player.rect.y - 20}, {TANK_SIZE, 10}, rl.RED)
+		rl.DrawRectangleV({player.position.x, player.position.y - 20}, {TANK_SIZE, 10}, rl.RED)
 		rl.DrawRectangleV(
-			{player.rect.x, player.rect.y - 20},
+			{player.position.x, player.position.y - 20},
 			{TANK_SIZE * (player.health / 100), 10},
 			rl.GREEN,
 		)
-		rl.DrawRectangleV({player.rect.x, player.rect.y}, {TANK_SIZE, TANK_SIZE}, player.colour)
+		rl.DrawRectangleV(
+			{player.position.x, player.position.y},
+			{TANK_SIZE, TANK_SIZE},
+			player.colour,
+		)
 	}
 	if !(enemy.is_dead) {
-		rl.DrawRectangleV({enemy.rect.x, enemy.rect.y - 20}, {TANK_SIZE, 10}, rl.RED)
+		rl.DrawRectangleV({enemy.position.x, enemy.position.y - 20}, {TANK_SIZE, 10}, rl.RED)
 		rl.DrawRectangleV(
-			{enemy.rect.x, enemy.rect.y - 20},
+			{enemy.position.x, enemy.position.y - 20},
 			{TANK_SIZE * (enemy.health / 100), 10},
 			rl.GREEN,
 		)
-		rl.DrawRectangleV({enemy.rect.x, enemy.rect.y}, {TANK_SIZE, TANK_SIZE}, enemy.colour)
+		rl.DrawRectangleV(
+			{enemy.position.x, enemy.position.y},
+			{TANK_SIZE, TANK_SIZE},
+			enemy.colour,
+		)
 	}
+
+	// draw aim
+	rl.DrawTriangle(
+		{player.position.x - TANK_SIZE / 4, player.position.y - TANK_SIZE / 4},
+		{player.position.x + TANK_SIZE / 4, player.position.y + TANK_SIZE / 4},
+		player.aim_point,
+		rl.GRAY,
+	)
 
 	rl.EndDrawing()
 }
 
 main :: proc() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "tank tank tank")
-	rl.SetTargetFPS(144)
+	rl.SetTargetFPS(60)
 
 	init()
 
