@@ -9,11 +9,15 @@ import (
 
 const Title = "Tank Tank Tank"
 
-const ScreenWidth = 1280
-const ScreenHeight = 720
+const (
+	ScreenWidth  = 1280
+	ScreenHeight = 720
+)
 
-const TerrainHeight = 200
-const TankSize = 64
+const (
+	TerrainHeight = 200
+	TankSize      = 64
+)
 
 type Bullet struct {
 	position rl.Vector2
@@ -39,8 +43,10 @@ type Tank struct {
 	prevAngle float64
 }
 
-var player Tank
-var enemy Tank
+var (
+	player Tank
+	enemy  Tank
+)
 
 func initGame() {
 	player.health = 100
@@ -64,8 +70,18 @@ func update() {
 		player.position.X += player.speed * rl.GetFrameTime()
 	}
 
-	player.aimPower = math.Sqrt(math.Pow(float64(player.position.X-rl.GetMousePosition().X), 2) + math.Pow(float64(player.position.Y-rl.GetMousePosition().Y), 2))
-	player.aimAngle = rl.Rad2deg * math.Asin(float64(player.position.Y-rl.GetMousePosition().Y)/player.aimPower)
+	player.aimPower = math.Sqrt(
+		math.Pow(
+			float64(player.position.X-rl.GetMousePosition().X),
+			2,
+		) + math.Pow(
+			float64(player.position.Y-rl.GetMousePosition().Y),
+			2,
+		),
+	)
+	player.aimAngle = rl.Rad2deg * math.Asin(
+		float64(player.position.Y-rl.GetMousePosition().Y)/player.aimPower,
+	)
 	player.aimPoint = rl.GetMousePosition()
 
 	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
@@ -81,8 +97,12 @@ func update() {
 	if len(player.bullets) != 0 {
 		for _, bullet := range player.bullets {
 			if !bullet.isActive {
-				bullet.speed.X = float32(math.Cos(rl.Deg2rad*player.prevAngle) * player.prevPower * 3 / 60)
-				bullet.speed.Y = float32(-math.Sin(rl.Deg2rad*player.prevAngle) * player.prevPower * 3 / 60)
+				bullet.speed.X = float32(
+					math.Cos(rl.Deg2rad*player.prevAngle) * player.prevPower * 3 / 60,
+				)
+				bullet.speed.Y = float32(
+					-math.Sin(rl.Deg2rad*player.prevAngle) * player.prevPower * 3 / 60,
+				)
 				bullet.isActive = true
 			}
 			bullet.position.X += bullet.speed.X
@@ -97,7 +117,11 @@ func render() {
 
 	// terrain
 	rl.ClearBackground(rl.SkyBlue)
-	rl.DrawRectangleV(rl.Vector2{X: 0, Y: 520 + TankSize}, rl.Vector2{X: ScreenWidth, Y: TerrainHeight}, rl.DarkGreen)
+	rl.DrawRectangleV(
+		rl.Vector2{X: 0, Y: 520 + TankSize},
+		rl.Vector2{X: ScreenWidth, Y: TerrainHeight},
+		rl.DarkGreen,
+	)
 
 	for _, bullet := range player.bullets {
 		rl.DrawCircleV(rl.Vector2{X: bullet.position.X, Y: bullet.position.Y}, 10, rl.Black)
@@ -105,7 +129,11 @@ func render() {
 
 	// player and enemy rendering
 	if !(player.isDead) {
-		rl.DrawRectangleV(rl.Vector2{X: player.position.X, Y: player.position.Y - 20}, rl.Vector2{X: TankSize, Y: 10}, rl.Red)
+		rl.DrawRectangleV(
+			rl.Vector2{X: player.position.X, Y: player.position.Y - 20},
+			rl.Vector2{X: TankSize, Y: 10},
+			rl.Red,
+		)
 		rl.DrawRectangleV(
 			rl.Vector2{X: player.position.X, Y: player.position.Y - 20},
 			rl.Vector2{X: TankSize * (player.health / 100), Y: 10},
@@ -118,7 +146,11 @@ func render() {
 		)
 	}
 	if !(enemy.isDead) {
-		rl.DrawRectangleV(rl.Vector2{X: enemy.position.X, Y: enemy.position.Y - 20}, rl.Vector2{X: TankSize, Y: 10}, rl.Red)
+		rl.DrawRectangleV(
+			rl.Vector2{X: enemy.position.X, Y: enemy.position.Y - 20},
+			rl.Vector2{X: TankSize, Y: 10},
+			rl.Red,
+		)
 		rl.DrawRectangleV(
 			rl.Vector2{X: enemy.position.X, Y: enemy.position.Y - 20},
 			rl.Vector2{X: TankSize * (enemy.health / 100), Y: 10},
