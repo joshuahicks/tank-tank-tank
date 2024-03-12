@@ -18,6 +18,7 @@ type Bullet struct {
 	position rl.Vector2
 	speed    rl.Vector2
 	damage   float64
+	size     float32
 	isActive bool
 }
 
@@ -108,7 +109,7 @@ func update() {
 			player.prevAngle = player.aimAngle
 			player.prevPower = player.aimPower
 
-			bullet := Bullet{position: player.position, damage: 25, isActive: false}
+			bullet := Bullet{position: player.position, damage: 25, size: 10, isActive: false}
 			player.bullets = append(player.bullets, &bullet)
 		}
 	}
@@ -130,13 +131,13 @@ func update() {
 				bullet.speed.Y += 9.81 / 60
 
 				// hit detection
-				if bullet.position.X >= enemy.position.X &&
-					bullet.position.X <= enemy.position.X+TankSize &&
-					bullet.position.Y >= enemy.position.Y &&
-					bullet.position.Y <= enemy.position.Y+TankSize && !enemy.isDead {
+				if rl.CheckCollisionCircleRec(
+					bullet.position,
+					bullet.size,
+					rl.NewRectangle(enemy.position.X, enemy.position.Y, TankSize, TankSize),
+				) && !enemy.isDead {
 					enemy.health -= float32(bullet.damage)
 
-					// I want to remove the bullet from the player.bullets list. How can I do this?
 					player.bullets = append(player.bullets[:index], player.bullets[index+1:]...)
 
 					if enemy.health <= 0 {
@@ -166,7 +167,11 @@ func render() {
 
 	{ // bullets
 		for _, bullet := range player.bullets {
-			rl.DrawCircleV(rl.Vector2{X: bullet.position.X, Y: bullet.position.Y}, 10, rl.Black)
+			rl.DrawCircleV(
+				rl.Vector2{X: bullet.position.X, Y: bullet.position.Y},
+				bullet.size,
+				rl.Black,
+			)
 		}
 	}
 
